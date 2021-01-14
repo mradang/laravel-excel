@@ -5,7 +5,7 @@
 ## 安装
 
 ```shell
-composer require mradang/laravel-options -vvv
+composer require mradang/laravel-excel -vvv
 ```
 
 ## 读取
