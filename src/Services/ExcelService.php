@@ -7,6 +7,7 @@ use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class ExcelService
 {
@@ -71,16 +72,16 @@ class ExcelService
 
         $writer->addRow(WriterEntityFactory::createRowFromArray($fields));
 
-        if (is_array($values)) {
+        if (is_array($values) || $values instanceof Collection) {
             foreach ($values as $index => $value) {
-                $row = $rowCallback($index, $value);
+                $row = $rowCallback ? $rowCallback($index, $value) : $value;
                 $writer->addRow(WriterEntityFactory::createRowFromArray($row));
             }
         } else if ($values instanceof Builder) {
             $index = 0;
             $values->chunk(100, function ($rows) use (&$index, $rowCallback, $writer) {
                 foreach ($rows as $value) {
-                    $row = $rowCallback($index, $value);
+                    $row = $rowCallback ? $rowCallback($index, $value) : $value;
                     $writer->addRow(WriterEntityFactory::createRowFromArray($row));
                     $index++;
                 }
