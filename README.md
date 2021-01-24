@@ -42,7 +42,11 @@ ExcelService::read(
 
 ## 写入
 
-$values 参数支持 Illuminate\Database\Eloquent\Builder 和 array
+$values 参数支持类型
+
+- Illuminate\Database\Eloquent\Builder
+- Illuminate\Support\Collection
+- array
 
 当使用 Builder 类型时，会调用实例的 chunk 方法，分块读取数据
 
