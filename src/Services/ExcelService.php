@@ -57,7 +57,11 @@ class ExcelService
     {
         $ret = [];
         foreach ($columns as $col) {
-            $ret[$col['field']] = optional(Arr::get($cells, $col['column']))->getValue() ?? '';
+            if ($col['column'] !== false) {
+                $ret[$col['field']] = optional(Arr::get($cells, $col['column']))->getValue() ?? '';
+            } else {
+                $ret[$col['field']] = '';
+            }
         }
         return $ret;
     }
