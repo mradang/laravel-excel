@@ -76,17 +76,26 @@ class ExcelService
 
         $writer->addRow(WriterEntityFactory::createRowFromArray($fields));
 
+        $addRow = function($writer, $row, $fields) {
+            $_row = [];
+            $keys = array_keys($fields);
+            foreach ($keys as $index => $key) {
+                $_row[$key] = Arr::get($row, $key) ?? Arr::get($row, $index);
+            }
+            $writer->addRow(WriterEntityFactory::createRowFromArray($_row));
+        };
+
         if (is_array($values) || $values instanceof Collection) {
             foreach ($values as $index => $value) {
                 $row = $rowCallback ? $rowCallback($index, $value) : $value;
-                $writer->addRow(WriterEntityFactory::createRowFromArray($row));
+                $addRow($writer, $row, $fields);
             }
         } else if ($values instanceof Builder) {
             $index = 0;
-            $values->chunk(100, function ($rows) use (&$index, $rowCallback, $writer) {
+            $values->chunk(100, function ($rows) use (&$index, $rowCallback, $writer, $addRow, $fields) {
                 foreach ($rows as $value) {
                     $row = $rowCallback ? $rowCallback($index, $value) : $value;
-                    $writer->addRow(WriterEntityFactory::createRowFromArray($row));
+                    $addRow($writer, $row, $fields);
                     $index++;
                 }
             });
