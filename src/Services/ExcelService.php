@@ -29,6 +29,15 @@ class ExcelService
             if ($sheet->getIndex() === 0) {
                 foreach ($sheet->getRowIterator() as $index => $row) {
                     if ($index === $fieldRow) {
+                        $cells = array_map(function ($item) {
+                            return $item->getValue();
+                        }, $row->getCells());
+                        $diff = array_diff($fields, $cells);
+                        throw_if(count($diff) > 0, 'RuntimeException', sprintf(
+                            '数据文件(%s)缺少必要列：%s',
+                            $pathname,
+                            implode(',', $diff),
+                        ));
                         $columns = self::handleFieldRow($fields, $row->getCells());
                     } elseif ($index >= $firstDataRow && $columns) {
                         $callback($index - $firstDataRow, self::handleDataRow($columns, $row->getCells()));
