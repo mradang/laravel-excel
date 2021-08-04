@@ -85,7 +85,7 @@ class ExcelService
 
         $writer->addRow(WriterEntityFactory::createRowFromArray($fields));
 
-        $addRow = function($writer, $row, $fields) {
+        $addRow = function ($writer, $row, $fields) {
             $_row = [];
             $keys = array_keys($fields);
             foreach ($keys as $index => $key) {
@@ -97,7 +97,9 @@ class ExcelService
         if (is_array($values) || $values instanceof Collection) {
             foreach ($values as $index => $value) {
                 $row = $rowCallback ? $rowCallback($index, $value) : $value;
-                $addRow($writer, $row, $fields);
+                if ($row) {
+                    $addRow($writer, $row, $fields);
+                }
             }
         } else if ($values instanceof Builder) {
             $index = 0;
