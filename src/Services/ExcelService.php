@@ -7,6 +7,7 @@ use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 
 class ExcelService
@@ -79,7 +80,8 @@ class ExcelService
     {
         ini_set('memory_limit', '512M');
 
-        $pathname = tempnam(sys_get_temp_dir(), '') . '.xlsx';
+        $pathname = storage_path('temp_' . md5(Str::random(40)) . '.xlsx');
+
         $writer = WriterEntityFactory::createXLSXWriter();
         $writer->openToFile($pathname);
 
