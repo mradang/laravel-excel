@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class ExcelService
 {
@@ -80,7 +81,9 @@ class ExcelService
     {
         ini_set('memory_limit', '512M');
 
-        $pathname = storage_path('temp_' . md5(Str::random(40)) . '.xlsx');
+        Storage::makeDirectory('temp');
+
+        $pathname = storage_path('app/temp/' . md5(Str::random(40)) . '.xlsx');
 
         $writer = WriterEntityFactory::createXLSXWriter();
         $writer->openToFile($pathname);
