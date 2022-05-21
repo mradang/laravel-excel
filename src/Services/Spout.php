@@ -81,9 +81,7 @@ class Spout
     {
         ini_set('memory_limit', '512M');
 
-        Storage::makeDirectory('temp');
-
-        $pathname = storage_path('app/temp/' . md5(Str::random(40)) . '.xlsx');
+        $pathname = storage_path('app/' . md5(Str::random(40)) . '.xlsx');
 
         $writer = WriterEntityFactory::createXLSXWriter();
         $writer->openToFile($pathname);

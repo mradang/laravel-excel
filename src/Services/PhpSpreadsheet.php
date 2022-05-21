@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -86,8 +85,7 @@ class PhpSpreadsheet
         // 写excel文件
         $writer = new Xlsx($spreadsheet);
         $writer->setPreCalculateFormulas(false);
-        Storage::makeDirectory('temp');
-        $pathname = storage_path('app/temp/' . md5(Str::random(40)) . '.xlsx');
+        $pathname = storage_path('app/' . md5(Str::random(40)) . '.xlsx');
         $writer->save($pathname);
 
         return $pathname;
@@ -197,8 +195,7 @@ class PhpSpreadsheet
         // 写excel文件
         $writer = new Xlsx($spreadsheet);
         $writer->setPreCalculateFormulas(false);
-        Storage::makeDirectory('temp');
-        $pathname = storage_path('app/temp/' . md5(Str::random(40)) . '.xlsx');
+        $pathname = storage_path('app/' . md5(Str::random(40)) . '.xlsx');
         $writer->save($pathname);
 
         return $pathname;
