@@ -37,10 +37,12 @@ class FeatureTest extends TestCase
             },
         );
 
-        $this->assertEquals($data[0], [
-            'id' => 1,
-            'name' => '张三',
-            'age' => 21,
+        $this->assertEquals(count($data), 3);
+
+        $this->assertEquals($data[1], [
+            'id' => 2,
+            'name' => '李四',
+            'age' => 22,
         ]);
 
         $this->assertEquals($data[2], [
@@ -48,8 +50,6 @@ class FeatureTest extends TestCase
             'name' => '王五',
             'age' => 23,
         ]);
-
-        $this->assertEquals(4, ExcelService::getHighestRow($pathname));
     }
 
     public function testWriteUseArray()
@@ -67,130 +67,88 @@ class FeatureTest extends TestCase
         ];
 
         $pathname = ExcelService::write(
+            '测试标题',
             $fields,
+            ['id', 'age'],
             $values,
             function (int $index, array $row) {
                 return array_values($row);
             },
+            2,
         );
 
         $this->assertFileExists($pathname);
-        $this->assertEquals(4, ExcelService::getHighestRow($pathname));
-
-        $data = [];
-        ExcelService::read(
-            $pathname,
-            1,
-            [
-                'id' => '编号',
-                'name' => '姓名',
-                'age' => '年龄',
-            ],
-            2,
-            function (int $index, array $cells) use (&$data) {
-                $data[] = $cells;
-            },
-        );
-
-        $this->assertEquals($data[2], [
-            'id' => 6,
-            'name' => '周八',
-            'age' => 26,
-        ]);
-
+        $data = $this->readTestExcelData($pathname, 2);
+        $this->assertEquals(count($data), 3);
+        $this->assertEquals($data[2], $values[2]);
         @unlink($pathname);
 
-        // 不试用回调函数处理行数据
+        // 不使用回调函数处理行数据
         $pathname = ExcelService::write(
+            '',
             $fields,
-            array_map(function($row) {
+            [],
+            array_map(function ($row) {
                 return array_values($row);
             }, $values)
         );
 
         $this->assertFileExists($pathname);
-        $this->assertEquals(4, ExcelService::getHighestRow($pathname));
-
-        $data = [];
-        ExcelService::read(
-            $pathname,
-            1,
-            [
-                'id' => '编号',
-                'name' => '姓名',
-                'age' => '年龄',
-            ],
-            2,
-            function (int $index, array $cells) use (&$data) {
-                $data[] = $cells;
-            },
-        );
-
-        $this->assertEquals($data[1], [
-            'id' => 5,
-            'name' => '孙七',
-            'age' => 25,
-        ]);
-
-        @unlink($pathname);
-
-        // 用 PhpSpreadsheet 生成
-        $pathname = ExcelService::makeUsePhpSpreadsheet('测试标题', $fields, $values, 1);
-        $this->assertFileExists($pathname);
-        $this->assertEquals(5, ExcelService::getHighestRow($pathname));
+        $data = $this->readTestExcelData($pathname, 1);
+        $this->assertEquals(count($data), 3);
+        $this->assertEquals($data[1], $values[1]);
         @unlink($pathname);
     }
 
     public function testWriteUseEloquentBuilder()
     {
-        User::create(['name' => '张三']);
-        User::create(['name' => '李四']);
+        User::create(['name' => '张三', 'age' => 33]);
+        User::create(['name' => '李四', 'age' => 34]);
 
         $fields = [
             'id' => '编号',
             'name' => '姓名',
+            'age' => '年龄',
         ];
 
         $pathname = ExcelService::write(
+            '',
             $fields,
+            ['id', 'age'],
             User::query(),
             function (int $index, $row) {
-                return [$row->id, $row->name];
+                return [$row->id, $row->name, $row->age];
             },
         );
 
         $this->assertFileExists($pathname);
+        $data = $this->readTestExcelData($pathname, 1);
+        $this->assertEquals(count($data), 2);
+        $this->assertEquals($data[1], [
+            'id' => 2,
+            'name' => '李四',
+            'age' => 34,
+        ]);
+        @unlink($pathname);
+    }
 
+    private function readTestExcelData(string $pathname, int $fieldRow)
+    {
         $data = [];
         ExcelService::read(
             $pathname,
-            1,
-            $fields,
-            2,
+            $fieldRow,
+            [
+                'id' => '编号',
+                'name' => '姓名',
+                'age' => '年龄',
+            ],
+            $fieldRow + 1,
             function (int $index, array $cells) use (&$data) {
                 $data[] = $cells;
             },
         );
 
-        $this->assertEquals($data, [
-            ['id' => 1, 'name' => '张三'],
-            ['id' => 2, 'name' => '李四'],
-        ]);
-
-        @unlink($pathname);
-
-        // 用 PhpSpreadsheet 生成
-        $pathname = ExcelService::writeUsePhpSpreadsheet(
-            '测试标题',
-            $fields,
-            ['id'],
-            User::query(),
-            function (int $index, $row) {
-                return [$row->id, $row->name];
-            },
-        );
-        $this->assertFileExists($pathname);
-        $this->assertEquals(4, ExcelService::getHighestRow($pathname));
-        @unlink($pathname);
+        return $data;
     }
 }

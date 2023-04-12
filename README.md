@@ -1,7 +1,5 @@
 # laravel-excel
 
-仅支持 XLSX 文件
-
 ## 安装
 
 ```shell
@@ -52,12 +50,14 @@ $values 参数支持类型
 
 ```php
 $pathname = ExcelService::write(
+    '首行通栏标题',
     [
         // 字段定义
         'id' => '编号',
         'name' => '姓名',
         'age' => '年龄',
     ],
+    ['id', 'age'], // 数字列
     [
         // 数据
         ['id' => 4, 'name' => '赵六', 'age' => 24],
@@ -68,6 +68,6 @@ $pathname = ExcelService::write(
         // 行数据处理函数，每行调用一次，返回字段值数组
         return array_values($row);
     },
+    2, // 冻结字段列
 );
-
 ```

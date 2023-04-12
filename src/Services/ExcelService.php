@@ -3,9 +3,31 @@
 namespace mradang\LaravelExcel\Services;
 
 use Closure;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ExcelService
 {
+    const DEFAULT_ROW_HEIGHT = 14.4;
+    const SINGLE_CHARACTER_WIDTH = 1.1;
+    const MAX_COLUMN_WIDTH = 100;
+
+    /**
+     * 读取 excel 文件
+     *
+     * @param string $pathname 文件绝对路径
+     * @param integer $fieldRow 字段名行号
+     * @param array $fields 字段数组 [字段名 => 字段中文名]
+     * @param integer $firstDataRow 首行数据行号
+     * @param Closure $callback 行处理程序
+     * @return void
+     */
     public static function read(
         string $pathname,
         int $fieldRow,
@@ -13,43 +35,195 @@ class ExcelService
         int $firstDataRow,
         Closure $callback
     ): void {
-        Spout::read($pathname, $fieldRow, $fields, $firstDataRow, $callback);
+        ini_set('memory_limit', '512M');
+
+        $inputFileType = IOFactory::identify($pathname);
+        $reader = IOFactory::createReader($inputFileType);
+        $reader->setReadDataOnly(true);
+
+        $spreadsheet = $reader->load($pathname);
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $columns = null;
+
+        foreach ($spreadsheet->getActiveSheet()->getRowIterator() as $index => $row) {
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+
+            $cells = [];
+            foreach ($cellIterator as $cell) {
+                $cells[] = $cell->getValue();
+            }
+
+            if ($index === $fieldRow) {
+                $diff = array_diff($fields, $cells);
+                throw_if(count($diff) > 0, 'RuntimeException', sprintf(
+                    '数据文件(%s)缺少必要列：%s',
+                    $pathname,
+                    implode(',', $diff),
+                ));
+                $columns = self::handleFieldRow($fields, $cells);
+            } elseif ($index >= $firstDataRow && $columns) {
+                $callback($index - $firstDataRow, self::handleDataRow($columns, $cells));
+            }
+        }
     }
 
-    public static function write(array $fields, $values = null, ?Closure $rowCallback = null): string
+    private static function handleFieldRow(array $fields, array $cells)
     {
-        return Spout::write($fields, $values, $rowCallback);
+        $columns = [];
+        foreach ($fields as $key => $value) {
+            $columns[] = [
+                'field' => $key,
+                'column' => array_search($value, $cells),
+            ];
+        }
+        return $columns;
     }
 
-    public static function makeUsePhpSpreadsheet(
-        string $title,
-        array $fields,
-        array $values,
-        int $freezeColumnIndex = 0
-    ): string {
-        return PhpSpreadsheet::make($title, $fields, $values, $freezeColumnIndex);
+    private static function handleDataRow(array $columns, array $cells)
+    {
+        $ret = [];
+        foreach ($columns as $col) {
+            if ($col['column'] !== false) {
+                $ret[$col['field']] = Arr::get($cells, $col['column']) ?? '';
+            } else {
+                $ret[$col['field']] = '';
+            }
+        }
+        return $ret;
     }
 
-    public static function writeUsePhpSpreadsheet(
+    /**
+     * 生成 excel 文件
+     *
+     * @param string $title 标题（空字符串时第一行开始字段名）
+     * @param array $fields 字段数组 [字段名 => 字段中文名]
+     * @param array $numericColumns 数字字段列数组 [字段名...]
+     * @param array|Collection $values 字段值
+     * @param integer $freezeColumnIndex 冻结字段列（0不冻结）
+     * @param Closure $rowCallback 行处理程序，需返回数组 [字段名 => 字段值]
+     * @return string 返回完整文件名
+     */
+    public static function write(
         string $title,
         array $fields,
         array $numericColumns,
         $values,
-        ?Closure $rowCallback = null,
-        int $freezeColumnIndex = 0
+        Closure $rowCallback = null,
+        int $freezeColumnIndex = 0,
     ): string {
-        return PhpSpreadsheet::write(
-            $title,
-            $fields,
-            $numericColumns,
-            $values,
-            $rowCallback,
-            $freezeColumnIndex
-        );
+        ini_set('memory_limit', '512M');
+
+        $fields = array_values($fields);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $w = []; // 每列最大宽度值
+
+        // 设置标题
+        if ($title) {
+            $sheet->mergeCells([1, 1, count($fields), 1]);
+            $sheet->setCellValue('A1', $title);
+            $sheet->getStyle('A1')->getAlignment()->setWrapText(true);
+            $sheet->getStyle('A1')->getAlignment()->setVertical('center');
+        }
+
+        // 设置行号常量
+        $title_row = $title ? 1 : 0;
+        $field_row = $title_row + 1;
+        $data_row = $field_row + 1;
+
+        // 写入字段名
+        $i = 0;
+        foreach ($fields as $field) {
+            $sheet->setCellValueExplicit([$i + 1, $field_row], $field, DataType::TYPE_STRING);
+            $width = mb_strwidth($field, 'UTF-8');
+            $w[$i] = max($width, 4 * 2); // 最小宽度 4 个汉字
+            $i++;
+        }
+
+        // 冻结表头
+        if ($freezeColumnIndex) {
+            $sheet->freezePane([$freezeColumnIndex, $data_row]);
+        }
+
+        // 添加一行的方法
+        $addRow = function ($sheet, $row, $fields, $rowIndex) use ($data_row, $numericColumns, &$w) {
+            $keys = array_keys($fields);
+            foreach ($keys as $index => $key) {
+                $value = Arr::get($row, $key) ?? Arr::get($row, $index);
+
+                $sheet->setCellValueExplicit(
+                    [$index + 1, $rowIndex + $data_row],
+                    $value,
+                    in_array($key, $numericColumns) ? DataType::TYPE_NUMERIC : DataType::TYPE_STRING
+                );
+                $width = mb_strwidth($value, 'UTF-8');
+                $w[$index] = max($w[$index], $width);
+            }
+        };
+
+        // 写入字段值
+        $i = 0;
+        if (is_array($values) || $values instanceof Collection) {
+            foreach ($values as $row) {
+                $_row = $rowCallback ? $rowCallback($i, $row) : $row;
+                if ($_row) {
+                    $addRow($sheet, $_row, $fields, $i);
+                    $i++;
+                }
+            }
+        } else if ($values instanceof Builder) {
+            $values->chunk(100, function ($rows) use (&$i, $rowCallback, $sheet, $fields, $addRow) {
+                foreach ($rows as $row) {
+                    $_row = $rowCallback ? $rowCallback($i, $row) : $row;
+                    if ($_row) {
+                        $addRow($sheet, $_row, $fields, $i);
+                        $i++;
+                    }
+                }
+            });
+        }
+
+        // 调整列宽和标题行高
+        for ($i = 0; $i < count($fields); $i++) {
+            $sheet->getColumnDimensionByColumn($i + 1)->setWidth(min(
+                $w[$i] * self::SINGLE_CHARACTER_WIDTH,
+                self::MAX_COLUMN_WIDTH
+            ));
+        }
+        if ($title && strpos($title, "\n")) {
+            self::autofitTitleHeight($sheet, $w);
+        }
+
+        // 写excel文件
+        $writer = new Xlsx($spreadsheet);
+        $writer->setPreCalculateFormulas(false);
+        $pathname = storage_path('app/' . md5(Str::random(40)) . '.xlsx');
+        $writer->save($pathname);
+
+        return $pathname;
     }
 
-    public static function getHighestRow(string $inputFileName, int $sheetIndex = 0): int
+    private static function autofitTitleHeight($sheet, $w)
     {
-        return PhpSpreadsheet::getHighestRow($inputFileName, $sheetIndex);
+        $cell = $sheet->getCell('A1');
+        $cellWidth = array_sum($w);
+
+        $lines = explode("\n", $cell->getValue());
+        $cellLines = 0;
+        foreach ($lines as $line) {
+            $cellLines += ceil(mb_strwidth($line, 'UTF-8') / $cellWidth);
+        }
+
+        $rowDimension = $sheet->getRowDimension(1);
+        $rowHeight = $rowDimension->getRowHeight();
+        if ($rowHeight === -1) {
+            $rowDimension->setRowHeight(self::DEFAULT_ROW_HEIGHT);
+            $rowHeight = $rowDimension->getRowHeight();
+        }
+
+        $rowDimension->setRowHeight($rowHeight * ($cellLines + 1));
     }
 }
