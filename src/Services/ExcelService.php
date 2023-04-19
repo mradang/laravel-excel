@@ -3,7 +3,7 @@
 namespace mradang\LaravelExcel\Services;
 
 use Closure;
-use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -115,8 +115,6 @@ class ExcelService
     ): string {
         ini_set('memory_limit', '512M');
 
-        $fields = array_values($fields);
-
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $w = []; // 每列最大宽度值
@@ -149,7 +147,7 @@ class ExcelService
         }
 
         // 添加一行的方法
-        $addRow = function ($sheet, $row, $fields, $rowIndex) use ($data_row, $numericColumns, &$w) {
+        $addRow = function ($row, $rowIndex) use ($data_row, $numericColumns, $sheet, $fields, &$w) {
             $keys = array_keys($fields);
             foreach ($keys as $index => $key) {
                 $value = Arr::get($row, $key) ?? Arr::get($row, $index);
@@ -170,16 +168,16 @@ class ExcelService
             foreach ($values as $row) {
                 $_row = $rowCallback ? $rowCallback($i, $row) : $row;
                 if ($_row) {
-                    $addRow($sheet, $_row, $fields, $i);
+                    $addRow($_row, $i);
                     $i++;
                 }
             }
         } else if ($values instanceof Builder) {
-            $values->chunk(100, function ($rows) use (&$i, $rowCallback, $sheet, $fields, $addRow) {
+            $values->chunk(100, function ($rows) use (&$i, $rowCallback, $addRow) {
                 foreach ($rows as $row) {
                     $_row = $rowCallback ? $rowCallback($i, $row) : $row;
                     if ($_row) {
-                        $addRow($sheet, $_row, $fields, $i);
+                        $addRow($_row, $i);
                         $i++;
                     }
                 }
