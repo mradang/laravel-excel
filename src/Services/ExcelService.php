@@ -155,7 +155,7 @@ class ExcelService
                 $sheet->setCellValueExplicit(
                     [$index + 1, $rowIndex + $data_row],
                     $value,
-                    in_array($key, $numericColumns) ? DataType::TYPE_NUMERIC : DataType::TYPE_STRING
+                    in_array($key, $numericColumns) && is_numeric($value) ? DataType::TYPE_NUMERIC : DataType::TYPE_STRING
                 );
                 $width = mb_strwidth($value, 'UTF-8');
                 $w[$index] = max($w[$index], $width);
