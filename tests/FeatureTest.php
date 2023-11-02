@@ -50,6 +50,8 @@ class FeatureTest extends TestCase
             'name' => '王五',
             'age' => 23,
         ]);
+
+        $this->assertEquals(ExcelService::getHighestRow($pathname), 4);
     }
 
     public function testWriteUseArray()

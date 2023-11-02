@@ -224,4 +224,16 @@ class ExcelService
 
         $rowDimension->setRowHeight($rowHeight * ($cellLines + 1));
     }
+
+    public static function getHighestRow(string $inputFileName, int $sheetIndex = 0): int
+    {
+        ini_set('memory_limit', '512M');
+
+        $inputFileType = IOFactory::identify($inputFileName);
+        $reader = IOFactory::createReader($inputFileType);
+
+        $worksheetData = $reader->listWorksheetInfo($inputFileName);
+
+        return Arr::get($worksheetData, $sheetIndex . '.totalRows') ?: 0;
+    }
 }
