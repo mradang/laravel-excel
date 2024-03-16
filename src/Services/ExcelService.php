@@ -56,12 +56,6 @@ class ExcelService
             }
 
             if ($index === $fieldRow) {
-                $diff = array_diff($fields, $cells);
-                throw_if(count($diff) > 0, 'RuntimeException', sprintf(
-                    '数据文件(%s)缺少必要列：%s',
-                    $pathname,
-                    implode(',', $diff),
-                ));
                 $columns = self::handleFieldRow($fields, $cells);
             } elseif ($index >= $firstDataRow && $columns) {
                 $callback($index - $firstDataRow, self::handleDataRow($columns, $cells));
