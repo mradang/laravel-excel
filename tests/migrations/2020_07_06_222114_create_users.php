@@ -17,6 +17,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->integer('age');
+            $table->dateTime('date1');
+            $table->string('date2');
             $table->string('secret')->nullable();
             $table->timestamps();
         });

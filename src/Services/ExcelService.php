@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -39,7 +40,6 @@ class ExcelService
 
         $inputFileType = IOFactory::identify($pathname);
         $reader = IOFactory::createReader($inputFileType);
-        $reader->setReadDataOnly(true);
 
         $spreadsheet = $reader->load($pathname);
         $spreadsheet->setActiveSheetIndex(0);
@@ -52,7 +52,12 @@ class ExcelService
 
             $cells = [];
             foreach ($cellIterator as $cell) {
-                $cells[] = $cell->getValue();
+                $value = $cell->getValue();
+                if (Date::isDateTime($cell)) {
+                    $cells[] = Date::excelToDateTimeObject($value);
+                } else {
+                    $cells[] = $value;
+                }
             }
 
             if ($index === $fieldRow) {

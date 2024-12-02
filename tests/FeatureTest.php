@@ -2,6 +2,7 @@
 
 namespace mradang\LaravelExcel\Test;
 
+use Carbon\Carbon;
 use mradang\LaravelExcel\Services\ExcelService;
 
 class FeatureTest extends TestCase
@@ -11,6 +12,14 @@ class FeatureTest extends TestCase
         parent::setUp();
     }
 
+    public $fields = [
+        'id' => '编号',
+        'name' => '姓名',
+        'age' => '年龄',
+        'date1' => '日期1',
+        'date2' => '日期2',
+    ];
+
     public function testRead()
     {
         $pathname = __DIR__ . DIRECTORY_SEPARATOR . 'data.xlsx';
@@ -19,18 +28,16 @@ class FeatureTest extends TestCase
         ExcelService::read(
             $pathname,
             1,
-            [
-                'id' => '编号',
-                'name' => '姓名',
-                'age' => '年龄',
-            ],
+            $this->fields,
             2,
             function (int $index, array $cells) use (&$data) {
                 if ($index === 0) {
-                    $this->assertEquals($cells, [
+                    $this->assertEquals($this->formatCells($cells), [
                         'id' => 1,
                         'name' => '张三',
                         'age' => 21,
+                        'date1' => '2024-04-01',
+                        'date2' => '2024-01-01',
                     ]);
                 }
                 $data[] = $cells;
@@ -39,16 +46,20 @@ class FeatureTest extends TestCase
 
         $this->assertEquals(count($data), 3);
 
-        $this->assertEquals($data[1], [
+        $this->assertEquals($this->formatCells($data[1]), [
             'id' => 2,
             'name' => '李四',
             'age' => 22,
+            'date1' => '2024-05-01',
+            'date2' => '2024-02-01',
         ]);
 
-        $this->assertEquals($data[2], [
+        $this->assertEquals($this->formatCells($data[2]), [
             'id' => 3,
             'name' => '王五',
             'age' => 23,
+            'date1' => '2024-06-01',
+            'date2' => '2024-03-01',
         ]);
 
         $this->assertEquals(ExcelService::getHighestRow($pathname), 4);
@@ -56,21 +67,15 @@ class FeatureTest extends TestCase
 
     public function testWriteUseArray()
     {
-        $fields = [
-            'id' => '编号',
-            'name' => '姓名',
-            'age' => '年龄',
-        ];
-
         $values = [
-            ['id' => 4, 'name' => '赵六', 'age' => 24],
-            ['id' => 5, 'name' => '孙七', 'age' => 25],
-            ['id' => 6, 'name' => '周八', 'age' => 26],
+            ['id' => 4, 'name' => '赵六', 'age' => 24, 'date1' => '2024-07-01', 'date2' => '2024-04-01'],
+            ['id' => 5, 'name' => '孙七', 'age' => 25, 'date1' => '2024-08-01', 'date2' => '2024-05-01'],
+            ['id' => 6, 'name' => '周八', 'age' => 26, 'date1' => '2024-09-01', 'date2' => '2024-06-01'],
         ];
 
         $pathname = ExcelService::write(
             '测试标题',
-            $fields,
+            $this->fields,
             ['id', 'age'],
             $values,
             function (int $index, array $row) {
@@ -88,7 +93,7 @@ class FeatureTest extends TestCase
         // 不使用回调函数处理行数据
         $pathname = ExcelService::write(
             '',
-            $fields,
+            $this->fields,
             [],
             array_map(function ($row) {
                 return array_values($row);
@@ -104,22 +109,16 @@ class FeatureTest extends TestCase
 
     public function testWriteUseEloquentBuilder()
     {
-        User::create(['name' => '张三', 'age' => 33]);
-        User::create(['name' => '李四', 'age' => 34]);
-
-        $fields = [
-            'id' => '编号',
-            'name' => '姓名',
-            'age' => '年龄',
-        ];
+        User::create(['name' => '张三', 'age' => 33, 'date1' => '2024-07-01', 'date2' => '2024-04-01']);
+        User::create(['name' => '李四', 'age' => 34, 'date1' => '2024-08-01', 'date2' => '2024-05-01']);
 
         $pathname = ExcelService::write(
             '',
-            $fields,
+            $this->fields,
             ['id', 'age'],
             User::query(),
             function (int $index, $row) {
-                return [$row->id, $row->name, $row->age];
+                return [$row->id, $row->name, $row->age, $row->date1, $row->date2];
             },
         );
 
@@ -130,6 +129,8 @@ class FeatureTest extends TestCase
             'id' => 2,
             'name' => '李四',
             'age' => 34,
+            'date1' => '2024-08-01',
+            'date2' => '2024-05-01',
         ]);
         @unlink($pathname);
     }
@@ -140,17 +141,23 @@ class FeatureTest extends TestCase
         ExcelService::read(
             $pathname,
             $fieldRow,
-            [
-                'id' => '编号',
-                'name' => '姓名',
-                'age' => '年龄',
-            ],
+            $this->fields,
             $fieldRow + 1,
             function (int $index, array $cells) use (&$data) {
-                $data[] = $cells;
+                $data[] = $this->formatCells($cells);
             },
         );
 
         return $data;
+    }
+
+    private function formatCells(array $cells): array
+    {
+        foreach ($cells as $key => $cell) {
+            if (is_a($cell, 'DateTime')) {
+                $cells[$key] = Carbon::parse($cell)->format('Y-m-d');
+            }
+        }
+        return $cells;
     }
 }
