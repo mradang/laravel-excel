@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -55,6 +56,8 @@ class ExcelService
                 $value = $cell->getValue();
                 if (Date::isDateTime($cell)) {
                     $cells[] = Date::excelToDateTimeObject($value);
+                } elseif ($value instanceof RichText) {
+                    $cells[] = $value->getPlainText();
                 } else {
                     $cells[] = $value;
                 }
