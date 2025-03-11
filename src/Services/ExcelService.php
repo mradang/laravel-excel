@@ -17,18 +17,19 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class ExcelService
 {
     const DEFAULT_ROW_HEIGHT = 14.4;
+
     const SINGLE_CHARACTER_WIDTH = 1.1;
+
     const MAX_COLUMN_WIDTH = 100;
 
     /**
      * 读取 excel 文件
      *
-     * @param string $pathname 文件绝对路径
-     * @param integer $fieldRow 字段名行号
-     * @param array $fields 字段数组 [字段名 => 字段中文名]
-     * @param integer $firstDataRow 首行数据行号
-     * @param Closure $callback 行处理程序
-     * @return void
+     * @param  string  $pathname  文件绝对路径
+     * @param  int  $fieldRow  字段名行号
+     * @param  array  $fields  字段数组 [字段名 => 字段中文名]
+     * @param  int  $firstDataRow  首行数据行号
+     * @param  Closure  $callback  行处理程序
      */
     public static function read(
         string $pathname,
@@ -80,6 +81,7 @@ class ExcelService
                 'column' => array_search($value, $cells),
             ];
         }
+
         return $columns;
     }
 
@@ -93,18 +95,19 @@ class ExcelService
                 $ret[$col['field']] = '';
             }
         }
+
         return $ret;
     }
 
     /**
      * 生成 excel 文件
      *
-     * @param string $title 标题（空字符串时第一行开始字段名）
-     * @param array $fields 字段数组 [字段名 => 字段中文名]
-     * @param array $numericColumns 数字字段列数组 [字段名...]
-     * @param array|Collection $values 字段值
-     * @param integer $freezeColumnIndex 冻结字段列（0不冻结）
-     * @param Closure $rowCallback 行处理程序，需返回数组 [字段名 => 字段值]
+     * @param  string  $title  标题（空字符串时第一行开始字段名）
+     * @param  array  $fields  字段数组 [字段名 => 字段中文名]
+     * @param  array  $numericColumns  数字字段列数组 [字段名...]
+     * @param  array|Collection  $values  字段值
+     * @param  int  $freezeColumnIndex  冻结字段列（0不冻结）
+     * @param  Closure  $rowCallback  行处理程序，需返回数组 [字段名 => 字段值]
      * @return string 返回完整文件名
      */
     public static function write(
@@ -112,12 +115,12 @@ class ExcelService
         array $fields,
         array $numericColumns,
         $values,
-        Closure $rowCallback = null,
+        ?Closure $rowCallback = null,
         int $freezeColumnIndex = 0,
     ): string {
         ini_set('memory_limit', '512M');
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $w = []; // 每列最大宽度值
 
@@ -174,7 +177,7 @@ class ExcelService
                     $i++;
                 }
             }
-        } else if ($values instanceof Builder) {
+        } elseif ($values instanceof Builder) {
             $values->chunk(100, function ($rows) use (&$i, $rowCallback, $addRow) {
                 foreach ($rows as $row) {
                     $_row = $rowCallback ? $rowCallback($i, $row) : $row;
@@ -200,7 +203,7 @@ class ExcelService
         // 写excel文件
         $writer = new Xlsx($spreadsheet);
         $writer->setPreCalculateFormulas(false);
-        $pathname = storage_path('app/' . md5(Str::random(40)) . '.xlsx');
+        $pathname = storage_path('app/'.md5(Str::random(40)).'.xlsx');
         $writer->save($pathname);
 
         return $pathname;
@@ -236,6 +239,6 @@ class ExcelService
 
         $worksheetData = $reader->listWorksheetInfo($inputFileName);
 
-        return Arr::get($worksheetData, $sheetIndex . '.totalRows') ?: 0;
+        return Arr::get($worksheetData, $sheetIndex.'.totalRows') ?: 0;
     }
 }

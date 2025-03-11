@@ -7,7 +7,7 @@ use mradang\LaravelExcel\Services\ExcelService;
 
 class FeatureTest extends TestCase
 {
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
     }
@@ -20,9 +20,9 @@ class FeatureTest extends TestCase
         'date2' => '日期2',
     ];
 
-    public function testRead()
+    public function test_read()
     {
-        $pathname = __DIR__ . DIRECTORY_SEPARATOR . 'data.xlsx';
+        $pathname = __DIR__.DIRECTORY_SEPARATOR.'data.xlsx';
         $data = [];
 
         ExcelService::read(
@@ -65,7 +65,7 @@ class FeatureTest extends TestCase
         $this->assertEquals(ExcelService::getHighestRow($pathname), 4);
     }
 
-    public function testWriteUseArray()
+    public function test_write_use_array()
     {
         $values = [
             ['id' => 4, 'name' => '赵六', 'age' => 24, 'date1' => '2024-07-01', 'date2' => '2024-04-01'],
@@ -107,7 +107,7 @@ class FeatureTest extends TestCase
         @unlink($pathname);
     }
 
-    public function testWriteUseEloquentBuilder()
+    public function test_write_use_eloquent_builder()
     {
         User::create(['name' => '张三', 'age' => 33, 'date1' => '2024-07-01', 'date2' => '2024-04-01']);
         User::create(['name' => '李四', 'age' => 34, 'date1' => '2024-08-01', 'date2' => '2024-05-01']);
@@ -158,6 +158,7 @@ class FeatureTest extends TestCase
                 $cells[$key] = Carbon::parse($cell)->format('Y-m-d');
             }
         }
+
         return $cells;
     }
 }
